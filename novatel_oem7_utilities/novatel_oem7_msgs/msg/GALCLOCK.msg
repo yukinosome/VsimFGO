@@ -1,0 +1,14 @@
+std_msgs/Header   header
+Oem7Header        nov_header
+float64           a0
+float64           a1
+int32             delta_tls
+uint32            tot
+uint32            wnt
+uint32            wnlsf
+uint32            dn
+int32             delta_tlsf
+float64           a0g
+float64           a1g
+uint32            t0g
+uint32            wn0g

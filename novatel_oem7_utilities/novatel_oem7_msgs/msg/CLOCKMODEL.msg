@@ -1,0 +1,22 @@
+std_msgs/Header         header
+Oem7Header              nov_header
+SolutionStatus          sol_status
+uint32                  reject_count
+uint32                  propagation_time
+uint32                  update_time
+float64                 bias
+float64                 rate
+float64                 reserved1
+float64                 bias_variance
+float64                 covariance
+float64                 reserved2
+float64                 reserved3
+float64                 rate_variance
+float64                 reserved4
+float64                 reserved5
+float64                 reserved6
+float64                 reserved7
+float64                 instantaneous_bias
+float64                 instantaneous_rate
+uint32                  reserved8
+

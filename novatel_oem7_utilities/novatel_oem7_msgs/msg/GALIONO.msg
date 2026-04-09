@@ -1,0 +1,10 @@
+std_msgs/Header   header
+Oem7Header        nov_header
+float64           ai0
+float64           ai1
+float64           ai2
+uint8             sf1
+uint8             sf2
+uint8             sf3
+uint8             sf4
+uint8             sf5

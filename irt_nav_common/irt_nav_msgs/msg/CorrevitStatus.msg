@@ -1,0 +1,16 @@
+std_msgs/Header    header
+float64            angle_vel_correction
+float64            angle_switch_off
+float64            direction
+float64            direction_head
+float64            direction_head_valid
+float64            direction_motion
+float64            direction_mounting
+float64            filter_off_on
+float64            filter_setting
+float64            head_status
+float64            lamp_current
+float64            lamp_current_control
+float64            sensor_id
+float64            temperature
+float64            temperature_ok

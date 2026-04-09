@@ -1,0 +1,11 @@
+std_msgs/Header        header
+float64                tow
+float64[3]             base
+uint8[40]              svid
+float64[200]           pseudorange
+uint8[200]             type
+float64[200]           carrier
+float64[200]           cn0
+uint16[200]            locktime
+uint16[200]            lli
+uint16                 reference_station_id

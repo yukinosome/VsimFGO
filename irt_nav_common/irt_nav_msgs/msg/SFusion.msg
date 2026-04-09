@@ -1,0 +1,14 @@
+std_msgs/Header   header
+float64           simulation_time
+uint64            counter
+float64           tow
+float64           filter_tow
+uint64            pps_counter
+float64[]         state
+float64[]         cov
+uint16            num_used_stat_ant1
+uint16            num_used_stat_ant2
+uint64            rtcm_counter
+bool              filter_inited_success
+bool              filter_inited
+PVAGeodetic       pva_geodetic

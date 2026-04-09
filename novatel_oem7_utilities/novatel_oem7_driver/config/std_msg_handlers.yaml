@@ -1,0 +1,20 @@
+oem7_msg_handlers:
+    - BESTPOSHandler
+    - INSHandler
+    - ALIGNHandler
+    - RXSTATUSHandler
+    - TimeHandler
+    - NMEAHandler
+    - IONUTCHandler
+    - GPSEPHEMHandler
+    - GALIONOHandler
+    - GALINAVEPHEMERISHandler
+    - GALFNAVEPHEMERISHandler
+    - DUALANTENNAHEADINGHandler
+    - GALCLOCKHandler
+    - CLOCKMODELHandler
+    - RANGEHandler
+    - SBASALMANACHandler
+    - NAVICSYSCLOCKHandler
+
+            

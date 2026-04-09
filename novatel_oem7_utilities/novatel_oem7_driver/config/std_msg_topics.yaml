@@ -1,0 +1,32 @@
+# ROS-standard
+#IMU:        {topic: /novatel/gps/imu,                 frame_id: gps}
+GPSFix:     {topic: /novatel/gps/gps,                 frame_id: gps}
+NavSatFix:  {topic: /novatel/gps/fix,                 frame_id: gps}
+Odometry:   {topic: /novatel/oem7/odom,       frame_id: odom}
+
+# Oem7-specific
+Oem7RawMsg: {topic: /novatel/oem7/oem7raw,    frame_id: gps, queue_size: 200}
+BESTPOS:    {topic: /novatel/oem7/bestpos,    frame_id: gps}
+BESTUTM:    {topic: /novatel/oem7/bestutm,    frame_id: gps}
+BESTVEL:    {topic: /novatel/oem7/bestvel,    frame_id: gps}
+#CORRIMU:    {topic: /novatel/oem7/corrimu,    frame_id: gps}
+#HEADING2:   {topic: /novatel/oem7/heading2,   frame_id: gps}
+#INSPVA:     {topic: /novatel/oem7/inspva,     frame_id: gps}
+#INSPVAX:    {topic: /novatel/oem7/inspvax,    frame_id: gps,  queue_size: 10}
+#INSSTDEV:   {topic: /novatel/oem7/insstdev,   frame_id: gps,  queue_size: 10}
+#INSCONFIG:  {topic: /novatel/oem7/insconfig,  frame_id: gps,  queue_size: 10}
+RXSTATUS:   {topic: /novatel/oem7/rxstatus,   frame_id: gps,  queue_size: 10}
+TIME:       {topic: /novatel/oem7/time,       frame_id: gps}
+RANGE:      {topic: /novatel/oem7/range,      frame_id: gps, queue_size: 10}
+RANGE_AUX:  {topic: /novatel/oem7/range_aux,  frame_id: gps, queue_size: 10}
+NMEA_Sentence: {topic: /gps/nmea_sentence,    frame_id: gps}
+IONUTC:     {topic: /novatel/oem7/ionutc,     frame_id: gps, queue_size: 10}
+GPSEPHEM:     {topic: /novatel/oem7/gpsephem,     frame_id: gps, queue_size: 10}
+GALIONO:     {topic: /novatel/oem7/galiono,     frame_id: gps, queue_size: 10}
+GALINAVEPHEMERIS:     {topic: /novatel/oem7/galInavEphemeris,     frame_id: gps, queue_size: 10}
+GALFNAVEPHEMERIS:     {topic: /novatel/oem7/galFnavEphemeris,     frame_id: gps, queue_size: 10}
+DUALANTENNAHEADING:     {topic: /novatel/oem7/dualantennaheading,     frame_id: gps, queue_size: 10}
+GALCLOCK:     {topic: /novatel/oem7/galclock,     frame_id: gps, queue_size: 10}
+CLOCKMODEL:     {topic: /novatel/oem7/clockmodel,     frame_id: gps, queue_size: 10}
+SBASALMANAC:   {topic: /novatel/oem7/sbasalmanac,  frame_id: gps, queue_size: 10}
+NAVICSYSCLOCK: {topic: /novatel/oem7/navicsysclock, frame_id: gps, queue_size: 10}

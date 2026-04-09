@@ -1,0 +1,15 @@
+std_msgs/Header        header
+uint16                 msg_number
+uint16                 ref_station_id
+uint8                  reserved_itrf_realization_year
+uint8                  gps_indicator
+uint8                  glo_indicator
+uint8                  galileo_indicator
+uint8                  reference_station_indicator 
+float64                antenna_reference_point_ecef_x_m
+float64                antenna_reference_point_ecef_y_m
+float64                antenna_reference_point_ecef_z_m
+uint8                  signle_receiver_oscillator_indicator
+uint8                  reserved1
+uint8                  reserved2
+uint32                 msg_counter

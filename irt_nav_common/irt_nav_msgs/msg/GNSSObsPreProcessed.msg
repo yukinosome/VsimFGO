@@ -1,0 +1,17 @@
+std_msgs/Header           header
+uint32                    counter
+float64                   time_offset_gal_gps
+bool                      is_ggto_valid
+GNSSObs                   gnss_obs_ant_main
+GNSSObs                   gnss_obs_ant_aux
+GNSSObs                   dd_gnss_obs_dualantenna
+GNSSObs                   dd_gnss_obs_time
+GNSSObs                   dd_gnss_obs_rtcm
+GNSSCorrection[]          gnss_corrections
+uint8[]				      faulty_prn_main
+uint8[]					  faulty_prn_aux
+bool                      has_time_dd
+bool                      has_dualantenna
+bool                      has_dualantenna_dd
+bool                      has_rtcm_dd
+bool                      has_rtk

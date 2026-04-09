@@ -1,0 +1,20 @@
+[submodule "irt_gnss_preprocessing"]
+	path = irt_gnss_preprocessing
+	url = git@github.com:rwth-irt/irt_gnss_preprocessing.git
+	branch = ros2
+[submodule "irt_nav_common"]
+	path = irt_nav_common
+	url = git@github.com:rwth-irt/irt_nav_common.git
+	branch = ros2
+[submodule "novatel_oem7_utilities"]
+	path = novatel_oem7_utilities
+	url = git@github.com:rwth-irt/novatel_oem7_driver.git
+	branch = ros2
+[submodule "LIOSAM"]
+	path = LIOSAM
+	url = git@github.com:rwth-irt/LIO-SAM.git
+	branch = ros2
+[submodule "ublox_msgs"]
+	path = ublox_msgs
+	url = git@github.com:rwth-irt/ublox.git
+	branch = ros2
