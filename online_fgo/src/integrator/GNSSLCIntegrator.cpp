@@ -159,6 +159,9 @@ namespace fgo::integrator {
     RCLCPP_INFO_STREAM(rosNodePtr_->get_logger(), "varScaleHeadingSingle: " << varScaleHeadingSingle.value());
     paramPtr_->varScaleHeadingSingle = varScaleHeadingSingle.value();
 
+    // [NON-ORIGINAL CODE] 新增参数开关：默认关闭，确保不改变原始行为。
+    RosParameter<bool> useVSimLatLonFactor("GNSSFGO." + integratorName_ + ".useVSimLatLonFactor", false, node);
+
 
     if (!paramPtr_->offlineProcess) {
       if (PVTSource.value() == "oem7") {
@@ -318,6 +321,10 @@ namespace fgo::integrator {
       RCLCPP_WARN_STREAM(rosNodePtr_->get_logger(), std::fixed << integratorName_ + " not integrating ...");
       return true;
     }
+    // [NON-ORIGINAL CODE] 在addFactors作用域内读取开关，避免未定义标识符。
+    RosParameter<bool> useVSimLatLonFactor("GNSSFGO." + integratorName_ + ".useVSimLatLonFactor", false,
+                                           *rosNodePtr_);
+
     static const auto baseToSensorTrans = sensorCalibManager_->getTransformationFromBase(sensorName_);
 
     static gtsam::Key pose_key_j, vel_key_j, omega_key_j, bias_key_j,
@@ -462,10 +469,42 @@ namespace fgo::integrator {
           this->addGNSSPVTFactor(pose_key_sync, vel_key_sync, bias_key_sync, pvaIter->xyz_ecef, pvaIter->vel_ecef,
                                  pvaIter->xyz_var * posVarScale, pvaIter->vel_var * velVarScale,
                                  baseToSensorTrans.translation());
+
+          // [NON-ORIGINAL CODE] 当启用VSim开关时，即使融合速度也额外加入经纬度二维位置因子。
+          if (useVSimLatLonFactor.value()) {
+            const auto llVar = (gtsam::Vector2() << pvaIter->xyz_var(0) * posVarScale,
+                                pvaIter->xyz_var(1) * posVarScale).finished();
+            novatel_oem7_msgs::msg::BESTPOS bestpos_msg;
+            bestpos_msg.lat = pvaIter->llh(0) * fgo::constants::rad2deg;
+            bestpos_msg.lon = pvaIter->llh(1) * fgo::constants::rad2deg;
+            bestpos_msg.hgt = pvaIter->llh(2);
+            this->addVSimLatLonFactor(pose_key_sync,
+                                      bestpos_msg,
+                                      llVar,
+                                      baseToSensorTrans.translation(),
+                                      paramPtr_->noiseModelPosition,
+                                      paramPtr_->robustParamPosition);
+          }
         } else {
           //RCLCPP_INFO_STREAM(appPtr_->get_logger(), "Integrating GNSS positioning ...");
-          this->addGNSSFactor(pose_key_sync, pvaIter->xyz_ecef, pvaIter->xyz_var * posVarScale,
-                              baseToSensorTrans.translation());
+          // [NON-ORIGINAL CODE] 默认仍走原GPS因子；仅在开关打开时使用VSim经纬度二维因子。
+          if (useVSimLatLonFactor.value()) {
+            const auto llVar = (gtsam::Vector2() << pvaIter->xyz_var(0) * posVarScale,
+                                pvaIter->xyz_var(1) * posVarScale).finished();
+            novatel_oem7_msgs::msg::BESTPOS bestpos_msg;
+            bestpos_msg.lat = pvaIter->llh(0) * fgo::constants::rad2deg;
+            bestpos_msg.lon = pvaIter->llh(1) * fgo::constants::rad2deg;
+            bestpos_msg.hgt = pvaIter->llh(2);
+            this->addVSimLatLonFactor(pose_key_sync,
+                                      bestpos_msg,
+                                      llVar,
+                                      baseToSensorTrans.translation(),
+                                      paramPtr_->noiseModelPosition,
+                                      paramPtr_->robustParamPosition);
+          } else {
+            this->addGNSSFactor(pose_key_sync, pvaIter->xyz_ecef, pvaIter->xyz_var * posVarScale,
+                                baseToSensorTrans.translation());
+          }
         }
 
         if (integrateAttitude && pvaIter->has_heading) {
@@ -499,12 +538,56 @@ namespace fgo::integrator {
                                                pvaIter->xyz_ecef, pvaIter->vel_ecef,
                                                pvaIter->xyz_var * posVarScale, pvaIter->vel_var * velVarScale,
                                                baseToSensorTrans.translation(), interpolator_);
+
+          // [NON-ORIGINAL CODE] 当启用VSim开关时，即使融合速度也额外加入GP插值的经纬度二维位置因子。
+          if (useVSimLatLonFactor.value()) {
+            const auto llVar = (gtsam::Vector2() << pvaIter->xyz_var(0) * posVarScale,
+                                pvaIter->xyz_var(1) * posVarScale).finished();
+            novatel_oem7_msgs::msg::BESTPOS bestpos_msg;
+            bestpos_msg.lat = pvaIter->llh(0) * fgo::constants::rad2deg;
+            bestpos_msg.lon = pvaIter->llh(1) * fgo::constants::rad2deg;
+            bestpos_msg.hgt = pvaIter->llh(2);
+            this->addGPInterpolatedVSimLatLonFactor(pose_key_i,
+                                                    vel_key_i,
+                                                    omega_key_i,
+                                                    pose_key_j,
+                                                    vel_key_j,
+                                                    omega_key_j,
+                                                    bestpos_msg,
+                                                    llVar,
+                                                    baseToSensorTrans.translation(),
+                                                    interpolator_,
+                                                    paramPtr_->noiseModelPosition,
+                                                    paramPtr_->robustParamPosition);
+          }
         } else {
           //RCLCPP_INFO_STREAM(appPtr_->get_logger(), "Integrating GP interpolated GNSS positioning ...");
-          this->addGPInterpolatedGNSSFactor(pose_key_i, vel_key_i, omega_key_i,
-                                            pose_key_j, vel_key_j, omega_key_j,
-                                            pvaIter->xyz_ecef, pvaIter->xyz_var * posVarScale,
-                                            baseToSensorTrans.translation(), interpolator_);
+          // [NON-ORIGINAL CODE] 默认仍走原GP GPS因子；仅在开关打开时使用GP插值VSim经纬度二维因子。
+          if (useVSimLatLonFactor.value()) {
+            const auto llVar = (gtsam::Vector2() << pvaIter->xyz_var(0) * posVarScale,
+                                pvaIter->xyz_var(1) * posVarScale).finished();
+            novatel_oem7_msgs::msg::BESTPOS bestpos_msg;
+            bestpos_msg.lat = pvaIter->llh(0) * fgo::constants::rad2deg;
+            bestpos_msg.lon = pvaIter->llh(1) * fgo::constants::rad2deg;
+            bestpos_msg.hgt = pvaIter->llh(2);
+            this->addGPInterpolatedVSimLatLonFactor(pose_key_i,
+                                                    vel_key_i,
+                                                    omega_key_i,
+                                                    pose_key_j,
+                                                    vel_key_j,
+                                                    omega_key_j,
+                                                    bestpos_msg,
+                                                    llVar,
+                                                    baseToSensorTrans.translation(),
+                                                    interpolator_,
+                                                    paramPtr_->noiseModelPosition,
+                                                    paramPtr_->robustParamPosition);
+          } else {
+            this->addGPInterpolatedGNSSFactor(pose_key_i, vel_key_i, omega_key_i,
+                                              pose_key_j, vel_key_j, omega_key_j,
+                                              pvaIter->xyz_ecef, pvaIter->xyz_var * posVarScale,
+                                              baseToSensorTrans.translation(), interpolator_);
+          }
         }
 
         if (integrateAttitude && pvaIter->has_heading) {

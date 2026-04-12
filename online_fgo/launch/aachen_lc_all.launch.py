@@ -3,13 +3,14 @@ import launch.launch_description_sources
 import yaml
 from ament_index_python.packages import get_package_share_directory
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, ExecuteProcess
-from launch.substitutions import LaunchConfiguration, Command, EnvironmentVariable
+from launch.substitutions import LaunchConfiguration, Command, EnvironmentVariable, PythonExpression
 from launch_ros.actions import Node
 from launch import LaunchDescription
 
 
 def generate_launch_description():
     config_common_path = LaunchConfiguration('config_common_path')
+    use_Vsim = LaunchConfiguration('use_Vsim')
 
     ### GNSS PREPROCESSING
     default_config_gnss_preprocessing = os.path.join(
@@ -84,6 +85,12 @@ def generate_launch_description():
         default_value=default_config_sensor_parameters,
         description='SensorParameters')
 
+    declare_use_vsim_latlon_factor_cmd = DeclareLaunchArgument(
+        'use_Vsim',
+        default_value='false',
+        choices=['true', 'false'],
+        description='Enable new VSim factor only when set to true')
+
     node_online_fgo = Node(
         package='online_fgo',
         executable='online_fgo_node',
@@ -99,7 +106,10 @@ def generate_launch_description():
             default_config_integrator,
             default_config_optimizer,
             default_config_sensor_parameters,
-            {}
+            {
+                'GNSSFGO.IRTPVALCIntegrator.useVSimLatLonFactor': PythonExpression(["'", use_Vsim, "' == 'true'"]),
+                'GNSSFGO.UbloxLCIntegrator.useVSimLatLonFactor': PythonExpression(["'", use_Vsim, "' == 'true'"]),
+            }
         ],
         remappings=[
             ('/irt_gpio/novatel/pps', '/irt_gpio_novatel/jetson_pps')
@@ -130,6 +140,16 @@ def generate_launch_description():
             START_OFFSET,
             ],
         output="screen",
+        prefix=['xterm -sl 10000 -hold -e '],
+    )
+
+    ### TEST NODE (workspace/test_ws)
+    node_test_ws = Node(
+        package='VisualSimulation',
+        executable='data_drop_node',
+        name='test_node',
+        output='screen',
+        emulate_tty=True,
         prefix=['xterm -sl 10000 -hold -e '],
     )
 
@@ -193,10 +213,12 @@ def generate_launch_description():
     ld.add_action(declare_config_integrtor_path_cmd)
     ld.add_action(declare_config_optimizer_path_cmd)
     ld.add_action(declare_config_sensor_parameters_path_cmd)
+    ld.add_action(declare_use_vsim_latlon_factor_cmd)
     ld.add_action(declare_config_gnss_preprocessing_path_cmd)
     ld.add_action(node_gnss_preprocessing)
     ld.add_action(node_online_fgo)
     ld.add_action(mapviz_launch)
+    ld.add_action(node_test_ws)
     ld.add_action(exec_play_rosbag)
     ld.add_action(liosam_params_declare)
     ld.add_action(node_liosam_tf2)

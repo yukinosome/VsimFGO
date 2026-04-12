@@ -25,6 +25,7 @@
 #include <gtsam/navigation/AttitudeFactor.h>
 #include <irt_nav_msgs/msg/pps.hpp>
 #include <irt_nav_msgs/msg/sensor_processing_report.hpp>
+#include <novatel_oem7_msgs/msg/bestpos.hpp>
 
 #include "graph/GraphBase.h"
 #include "data/DataTypesFGO.h"
@@ -45,6 +46,8 @@
 #include "factor/odometry/GPInterpolatedNavVelocityFactor.h"
 #include "factor/odometry/NavPoseFactor.h"
 #include "factor/odometry/GPInterpolatedNavPoseFactor.h"
+#include "factor/camera/VSimFactor.h"
+#include "factor/camera/GPInterpolatedVsimFactor.h"
 #include "solver/FixedLagSmoother.h"
 #include "sensor/SensorCalibrationManager.h"
 
@@ -392,6 +395,54 @@ namespace fgo::integrator {
                                                                           interpolator, noiseModel,
                                                                           integratorBaseParamPtr_->AutoDiffGPInterpolatedFactor);
     }
+
+    void addVSimLatLonFactor(const gtsam::Key &poseKey,
+                  const novatel_oem7_msgs::msg::BESTPOS &bestposMsg,
+                  const gtsam::Vector2 &llVar,
+                  const gtsam::Vector3 &lb,
+                  fgo::data::NoiseModel positionNoiseModel,
+                  double positionRobustParam) {
+      const auto noiseModel = graph::assignNoiseModel(positionNoiseModel,
+                              llVar,
+                              positionRobustParam,
+                              "VSimLatLon");
+
+      graphPtr_->emplace_shared<fgo::factor::camera::VSimFactor>(poseKey,
+                                    bestposMsg,
+                                    lb,
+                                    noiseModel,
+                                    integratorBaseParamPtr_->AutoDiffNormalFactor);
+    }
+
+    void addGPInterpolatedVSimLatLonFactor(const gtsam::Key &poseKeyI,
+                          const gtsam::Key &velKeyI,
+                          const gtsam::Key &omegaKeyI,
+                          const gtsam::Key &poseKeyJ,
+                          const gtsam::Key &velKeyJ,
+                          const gtsam::Key &omegaKeyJ,
+                          const novatel_oem7_msgs::msg::BESTPOS &bestposMsg,
+                          const gtsam::Vector2 &llVar,
+                          const gtsam::Vector3 &lb,
+                            const std::shared_ptr<fgo::models::GPInterpolator> &interpolator,
+                            fgo::data::NoiseModel positionNoiseModel,
+                            double positionRobustParam) {
+                  const auto noiseModel = graph::assignNoiseModel(positionNoiseModel,
+                              llVar,
+                              positionRobustParam,
+                              "GPInterpolatedVSimLatLon");
+
+      graphPtr_->emplace_shared<fgo::factor::GPInterpolatedVSimFactor>(poseKeyI,
+                                      velKeyI,
+                                      omegaKeyI,
+                                      poseKeyJ,
+                                      velKeyJ,
+                                      omegaKeyJ,
+                                      bestposMsg,
+                                      lb,
+                                      noiseModel,
+                                      interpolator,
+                                      integratorBaseParamPtr_->AutoDiffGPInterpolatedFactor);
+}
 
 
     /***
