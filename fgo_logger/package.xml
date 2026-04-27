@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>fgo_logger</name>
+  <version>0.0.1</version>
+  <description>Subscribe online_fgo state and log raw ECEF and converted LLH to CSV.</description>
+  <maintainer email="yukinosome@qq.com">root</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>irt_nav_msgs</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
