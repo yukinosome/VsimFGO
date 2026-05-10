@@ -10,6 +10,7 @@ from launch import LaunchDescription
 
 def generate_launch_description():
     config_common_path = LaunchConfiguration('config_common_path')
+    use_vsim = LaunchConfiguration('use_vsim')
 
     ### GNSS PREPROCESSING
     default_config_gnss_preprocessing = os.path.join(
@@ -53,6 +54,11 @@ def generate_launch_description():
         'config_vsim_path',
         default_value=default_config_vsim,
         description='VirtualSimulationParameters')
+
+    declare_use_vsim_cmd = DeclareLaunchArgument(
+        'use_vsim',
+        default_value='false',
+        description='Enable VSim Lat/Lon factor in GNSSLCIntegrator')
 
     node_vsim = Node(
         package='VisualSimulation',
@@ -128,7 +134,13 @@ def generate_launch_description():
             default_config_integrator,
             default_config_optimizer,
             default_config_sensor_parameters,
-            {}
+            {
+                'GNSSFGO': {
+                    'IRTPVALCIntegrator': {
+                        'useVSimLatLonFactor': use_vsim,
+                    }
+                }
+            }
         ],
         remappings=[
             ('/vsim/fix', '/novatel/oem7/vsim'),         # VSim input
@@ -198,6 +210,7 @@ def generate_launch_description():
     ld.add_action(declare_config_integrator_path_cmd)
     ld.add_action(declare_config_optimizer_path_cmd)
     ld.add_action(declare_config_sensor_parameters_path_cmd)
+    ld.add_action(declare_use_vsim_cmd)
     
     ld.add_action(node_gnss_preprocessing)
     ld.add_action(node_vsim)

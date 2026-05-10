@@ -25,6 +25,7 @@ add_library(${ONLINEFGO_INTEGRATOR_NAME}
         GNSSTCIntegrator.cpp
         IMUPreIntegrator.cpp
         LIOIntegrator.cpp
+        VSimIntegrator.cpp
 )
 #add_library(${PROJECT_NAME}::${ONLINEFGO_INTEGRATOR_NAME} ALIAS ${ONLINEFGO_INTEGRATOR_NAME})
 target_include_directories(${ONLINEFGO_INTEGRATOR_NAME}

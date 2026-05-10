@@ -10,7 +10,11 @@ from launch import LaunchDescription
 
 def generate_launch_description():
     config_common_path = LaunchConfiguration('config_common_path')
-    use_Vsim = LaunchConfiguration('use_Vsim')
+    config_integrator_path = LaunchConfiguration('config_integrator_path')
+    config_optimizer_path = LaunchConfiguration('config_optimizer_path')
+    config_sensor_parameters_path = LaunchConfiguration('config_sensor_parameters_path')
+    config_gnss_preprocessing_path = LaunchConfiguration('config_gnss_preprocessing_path')
+    use_vsim = LaunchConfiguration('use_vsim')
 
     ### GNSS PREPROCESSING
     default_config_gnss_preprocessing = os.path.join(
@@ -20,7 +24,7 @@ def generate_launch_description():
     )
 
     declare_config_gnss_preprocessing_path_cmd = DeclareLaunchArgument(
-        'config_common_path',
+        'config_gnss_preprocessing_path',
         default_value=default_config_gnss_preprocessing,
         description='GNSS_Parameters')
 
@@ -34,7 +38,7 @@ def generate_launch_description():
         prefix=['xterm -sl 10000 -hold -e '],
         #arguments=['--ros-args', '--log-level', logger],
         parameters=[
-            config_common_path,  # Common parameter
+            config_gnss_preprocessing_path,
             default_config_gnss_preprocessing
         ],
         remappings=[
@@ -47,17 +51,17 @@ def generate_launch_description():
 
     default_config_common = os.path.join(
         get_package_share_directory('online_fgo'),
-        'config/deutschland_lc',
+        'config/aachen_lc',
         'common.yaml'
     )
     default_config_integrator = os.path.join(
         get_package_share_directory('online_fgo'),
-        'config/deutschland_lc',
+        'config/aachen_lc',
         'integrator.yaml'
     )
     default_config_optimizer = os.path.join(
         get_package_share_directory('online_fgo'),
-        'config/deutschland_lc',
+        'config/aachen_lc',
         'optimizer.yaml'
     )
     declare_config_common_path_cmd = DeclareLaunchArgument(
@@ -66,30 +70,29 @@ def generate_launch_description():
         description='CommonParameters')
 
     declare_config_integrtor_path_cmd = DeclareLaunchArgument(
-        'config_common_path',
+        'config_integrator_path',
         default_value=default_config_integrator,
         description='IntegratorParameters')
 
     declare_config_optimizer_path_cmd = DeclareLaunchArgument(
-        'config_common_path',
+        'config_optimizer_path',
         default_value=default_config_optimizer,
         description='OptimizerParameters')
 
     default_config_sensor_parameters = os.path.join(
         get_package_share_directory('online_fgo'),
-        'config/deutschland_lc',
+        'config/aachen_lc',
         'sensor_parameters.yaml'
     )
     declare_config_sensor_parameters_path_cmd = DeclareLaunchArgument(
-        'config_common_path',
+        'config_sensor_parameters_path',
         default_value=default_config_sensor_parameters,
         description='SensorParameters')
 
-    declare_use_vsim_latlon_factor_cmd = DeclareLaunchArgument(
-        'use_Vsim',
-        default_value='false',
-        choices=['true', 'false'],
-        description='Enable new VSim factor only when set to true')
+    declare_use_vsim_cmd = DeclareLaunchArgument(
+        'use_vsim',
+        default_value='true',
+        description='Enable VSimIntegrator (false sets notIntegrating)')
 
     node_online_fgo = Node(
         package='online_fgo',
@@ -102,13 +105,15 @@ def generate_launch_description():
         # arguments=['--ros-args', '--log-level', logger],
         parameters=[
             config_common_path,
-            default_config_common,
-            default_config_integrator,
-            default_config_optimizer,
-            default_config_sensor_parameters,
+            config_integrator_path,
+            config_optimizer_path,
+            config_sensor_parameters_path,
             {
-                'GNSSFGO.IRTPVALCIntegrator.useVSimLatLonFactor': PythonExpression(["'", use_Vsim, "' == 'true'"]),
-                'GNSSFGO.UbloxLCIntegrator.useVSimLatLonFactor': PythonExpression(["'", use_Vsim, "' == 'true'"]),
+                'GNSSFGO': {
+                    'VSimIntegrator': {
+                        'notIntegrating': PythonExpression(["'", use_vsim, "' == 'false'"])
+                    }
+                }
             }
         ],
         remappings=[
@@ -117,15 +122,15 @@ def generate_launch_description():
     )
 
     ### ROSBAG
-    BAG_PATH = "/Data/ros2_db3/AC"  # Correct path to the AC dataset
-    START_OFFSET = "0"  # Changed from 60 to 0 for immediate start
-    try:
-        if(EnvironmentVariable('BAG_PATH')):
-            BAG_PATH = EnvironmentVariable('BAG_PATH')
-        if(EnvironmentVariable('START_OFFSET')):
-            START_OFFSET = EnvironmentVariable('START_OFFSET')
-    except:
-        pass
+    BAG_PATH = "/Data/ros2_db3/AC"
+    START_OFFSET = "60"
+    # try:
+    #     if(EnvironmentVariable('BAG_PATH')):
+    #         BAG_PATH = EnvironmentVariable('BAG_PATH')
+    #     if(EnvironmentVariable('START_OFFSET')):
+    #         START_OFFSET = EnvironmentVariable('START_OFFSET')
+    # except:
+    #     pass
     print("Current bag path: ", BAG_PATH)
     print("Current start offset: ", START_OFFSET)
 
@@ -143,59 +148,49 @@ def generate_launch_description():
         prefix=['xterm -sl 10000 -hold -e '],
     )
 
-    ### TEST NODE (workspace/test_ws)
-    node_test_ws = Node(
-        package='VisualSimulation',
-        executable='data_drop_node',
-        name='test_node',
-        output='screen',
-        emulate_tty=True,
-        prefix=['xterm -sl 10000 -hold -e '],
-    )
-
     ### LIOSAM
-    liosam_dir = get_package_share_directory('lio_sam')
-    liosam_parameter_file = LaunchConfiguration('params_file')
-    rviz_config_file = os.path.join(liosam_dir, 'config', 'rviz2.rviz')
+    # liosam_dir = get_package_share_directory('lio_sam')
+    # liosam_parameter_file = LaunchConfiguration('params_file')
+    # rviz_config_file = os.path.join(liosam_dir, 'config', 'rviz2.rviz')
 
-    liosam_params_declare = DeclareLaunchArgument(
-        'params_file',
-        default_value=os.path.join(
-            liosam_dir, 'config', 'params.yaml'),
-        description='FPath to the ROS2 parameters file to use.')
+    # liosam_params_declare = DeclareLaunchArgument(
+    #     'params_file',
+    #     default_value=os.path.join(
+    #         liosam_dir, 'config', 'params.yaml'),
+    #     description='FPath to the ROS2 parameters file to use.')
 
-    node_liosam_tf2 = Node(
-        package='tf2_ros',
-        executable='static_transform_publisher',
-        arguments='0.0 0.0 0.0 0.0 0.0 0.0 map odom'.split(' '),
-        parameters=[liosam_parameter_file],
-        output='screen'
-    )
+    # node_liosam_tf2 = Node(
+    #     package='tf2_ros',
+    #     executable='static_transform_publisher',
+    #     arguments='0.0 0.0 0.0 0.0 0.0 0.0 map odom'.split(' '),
+    #     parameters=[liosam_parameter_file],
+    #     output='screen'
+    # )
 
-    node_liosam_projection = Node(
-        package='lio_sam',
-        executable='lio_sam_imageProjection',
-        name='lio_sam_imageProjection',
-        parameters=[liosam_parameter_file],
-        output='screen'
-    )
+    # node_liosam_projection = Node(
+    #     package='lio_sam',
+    #     executable='lio_sam_imageProjection',
+    #     name='lio_sam_imageProjection',
+    #     parameters=[liosam_parameter_file],
+    #     output='screen'
+    # )
 
-    node_liosam_feature = Node(
-        package='lio_sam',
-        executable='lio_sam_featureExtraction',
-        name='lio_sam_featureExtraction',
-        parameters=[liosam_parameter_file],
-        prefix=['xterm -sl 10000 -hold -e '],
-        output='screen'
-    )
+    # node_liosam_feature = Node(
+    #     package='lio_sam',
+    #     executable='lio_sam_featureExtraction',
+    #     name='lio_sam_featureExtraction',
+    #     parameters=[liosam_parameter_file],
+    #     prefix=['xterm -sl 10000 -hold -e '],
+    #     output='screen'
+    # )
 
-    node_rviz2 = Node(
-        package='rviz2',
-        executable='rviz2',
-        name='rviz2',
-        arguments=['-d', rviz_config_file],
-        output='screen'
-    )
+    # node_rviz2 = Node(
+    #     package='rviz2',
+    #     executable='rviz2',
+    #     name='rviz2',
+    #     arguments=['-d', rviz_config_file],
+    #     output='screen'
+    # )
 
     ### MAPVIZ
     mapviz_dir = get_package_share_directory("mapviz")
@@ -213,17 +208,16 @@ def generate_launch_description():
     ld.add_action(declare_config_integrtor_path_cmd)
     ld.add_action(declare_config_optimizer_path_cmd)
     ld.add_action(declare_config_sensor_parameters_path_cmd)
-    ld.add_action(declare_use_vsim_latlon_factor_cmd)
     ld.add_action(declare_config_gnss_preprocessing_path_cmd)
+    ld.add_action(declare_use_vsim_cmd)
     ld.add_action(node_gnss_preprocessing)
     ld.add_action(node_online_fgo)
     ld.add_action(mapviz_launch)
-    ld.add_action(node_test_ws)
     ld.add_action(exec_play_rosbag)
-    ld.add_action(liosam_params_declare)
-    ld.add_action(node_liosam_tf2)
-    ld.add_action(node_liosam_projection)
-    ld.add_action(node_liosam_feature)
-    ld.add_action(node_rviz2)
+    # ld.add_action(liosam_params_declare)
+    # ld.add_action(node_liosam_tf2)
+    # ld.add_action(node_liosam_projection)
+    # ld.add_action(node_liosam_feature)
+    # ld.add_action(node_rviz2)
 
     return ld

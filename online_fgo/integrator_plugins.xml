@@ -43,4 +43,10 @@
         </description>
     </class>
 
+    <class name="VSimIntegrator" type="fgo::integrator::VSimIntegrator" base_class_type="fgo::integrator::IntegratorBase">
+        <description>
+            VSimIntegrator
+        </description>
+    </class>
+
 </library>

@@ -58,7 +58,7 @@
         VoteNearZeroVelocity: 0.1 # 20%
         NoOptimizationAfterStates: 0
 
-      Integrators: [ "IRTPVALCIntegrator", "CorrevitIntegrator"]   # ["UbloxLCIntegrator", "CorrevitIntegrator", "GNSSTCIntegrator", "LIOIntegrator"]
+      Integrators: [ "IRTPVALCIntegrator", "VSimIntegrator", "CorrevitIntegrator"]   # ["UbloxLCIntegrator", "CorrevitIntegrator", "GNSSTCIntegrator", "LIOIntegrator"]
 
       Optimizer:
         #undefined, BatchFixedLag, IncrementalFixedLag

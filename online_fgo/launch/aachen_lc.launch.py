@@ -15,10 +15,14 @@ def get_params(p):
 
 def generate_launch_description():
     logger = LaunchConfiguration("log_level")
+    use_vsim = LaunchConfiguration("use_vsim")
     share_dir = get_package_share_directory('online_fgo')
     xacro_path = os.path.join(share_dir, 'config/aachen_lc', 'dienstwagen.urdf.xacro')
 
     config_common_path = LaunchConfiguration('config_common_path')
+    config_integrator_path = LaunchConfiguration('config_integrator_path')
+    config_optimizer_path = LaunchConfiguration('config_optimizer_path')
+    config_sensor_parameters_path = LaunchConfiguration('config_sensor_parameters_path')
     default_config_common = os.path.join(
         get_package_share_directory('online_fgo'),
         'config/aachen_lc',
@@ -43,12 +47,12 @@ def generate_launch_description():
         description='CommonParameters')
 
     declare_config_integrtor_path_cmd = DeclareLaunchArgument(
-        'config_common_path',
+        'config_integrator_path',
         default_value=default_config_integrator,
         description='IntegratorParameters')
 
     declare_config_optimizer_path_cmd = DeclareLaunchArgument(
-        'config_common_path',
+        'config_optimizer_path',
         default_value=default_config_optimizer,
         description='OptimizerParameters')
 
@@ -58,9 +62,14 @@ def generate_launch_description():
         'sensor_parameters.yaml'
     )
     declare_config_sensor_parameters_path_cmd = DeclareLaunchArgument(
-        'config_common_path',
+        'config_sensor_parameters_path',
         default_value=default_config_sensor_parameters,
         description='SensorParameters')
+
+    declare_use_vsim_cmd = DeclareLaunchArgument(
+        'use_vsim',
+        default_value='false',
+        description='Enable VSim Lat/Lon factor in GNSSLCIntegrator')
 
     online_fgo_node = Node(
         package='online_fgo',
@@ -73,12 +82,15 @@ def generate_launch_description():
         # arguments=['--ros-args', '--log-level', logger],
         parameters=[
             config_common_path,
-            default_config_common,
-            default_config_integrator,
-            default_config_optimizer,
-            default_config_sensor_parameters,
+            config_integrator_path,
+            config_optimizer_path,
+            config_sensor_parameters_path,
             {
-
+                'GNSSFGO': {
+                    'IRTPVALCIntegrator': {
+                        'useVSimLatLonFactor': use_vsim,
+                    }
+                }
             }
             # Overriding
             # {
@@ -125,6 +137,7 @@ def generate_launch_description():
     ld.add_action(declare_config_integrtor_path_cmd)
     ld.add_action(declare_config_optimizer_path_cmd)
     ld.add_action(declare_config_sensor_parameters_path_cmd)
+    ld.add_action(declare_use_vsim_cmd)
     ld.add_action(online_fgo_node)
     #ld.add_action(robot_des)
     # ld.add_action(plot_node)

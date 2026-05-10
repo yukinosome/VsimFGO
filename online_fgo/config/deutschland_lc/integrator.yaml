@@ -48,6 +48,20 @@
         robustParamVel: 0.5
         robustParamAtt: 0.5
 
+      VSimIntegrator:
+        integratorPlugin: "VSimIntegrator"
+        sensorName: "reference"
+        notIntegrating: false
+        useForInitialization: false
+        useHeaderTimestamp: true
+        onlyRTKFixed: false
+
+        vsimBestposTopic: "/novatel/oem7/vsim"
+
+        posVarScale: 1.
+        noiseModelPosition: "cauchy"
+        robustParamPos: 0.5
+
       UbloxLCIntegrator:
         integratorPlugin: "GNSSLCIntegrator"
         sensorName: "ublox_ant_main"
