@@ -6,9 +6,11 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 try:
     import rclpy
+    from rcl_interfaces.msg import ParameterDescriptor
     from rclpy.node import Node
 except ModuleNotFoundError:
     rclpy = None
+    ParameterDescriptor = None
 
     class Node:  # type: ignore[no-redef]
         pass
@@ -35,30 +37,40 @@ class PositionAnalysisNode(Node):
     def __init__(self) -> None:
         super().__init__('position_analysis')
 
-        self.declare_parameter('input_csvs', '/Data/fgo_state_optimized.csv')
-        self.declare_parameter('input_labels', 'estimate')
+        self.declare_parameter('input_csvs', '/Data/fgo_state_optimized.csv,/Data/gnss_imu_fgo_output.csv')
+        self.declare_parameter('input_labels', 'estimate,GNSS IMU FGO')
+        self.declare_parameter('gnss_csv', '')
+        self.declare_parameter('gnss_label', 'GNSS')
+        self.declare_parameter('gnss_filter', 'none')
         self.declare_parameter('reference_csv', '')
         self.declare_parameter('reference_label', 'NovAtel RTK Fixed')
         self.declare_parameter('reference_filter', 'rtk_fixed_if_available')
         self.declare_parameter('output_dir', '/Data/position_analysis')
         self.declare_parameter('time_mode', 'relative')
-        self.declare_parameter('start_time_s', '')
-        self.declare_parameter('end_time_s', '')
+        dynamic_descriptor = ParameterDescriptor(dynamic_typing=True)
+        self.declare_parameter('start_time_s', '', descriptor=dynamic_descriptor)
+        self.declare_parameter('end_time_s', '', descriptor=dynamic_descriptor)
         self.declare_parameter('dpi', 180)
+        self.declare_parameter('ecef_altitude_offset_m', -46.5)
 
         input_csvs = _split_list(self._param_str('input_csvs'))
         input_labels = _split_list(self._param_str('input_labels'))
+        gnss_csv = self._param_str('gnss_csv')
+        gnss_label = self._param_str('gnss_label')
+        gnss_filter = self._param_str('gnss_filter')
         reference_csv = self._param_str('reference_csv')
         reference_label = self._param_str('reference_label')
         reference_filter = self._param_str('reference_filter')
         output_dir = Path(self._param_str('output_dir')).expanduser().resolve()
         time_mode = self._param_str('time_mode')
-        start_time_s = _optional_param_float(self._param_str('start_time_s'))
-        end_time_s = _optional_param_float(self._param_str('end_time_s'))
+        start_time_s = _optional_param_float(self.get_parameter('start_time_s').value)
+        end_time_s = _optional_param_float(self.get_parameter('end_time_s').value)
         dpi = self.get_parameter('dpi').get_parameter_value().integer_value
+        ecef_altitude_offset_m = self.get_parameter(
+            'ecef_altitude_offset_m').get_parameter_value().double_value
 
-        if not input_csvs and not reference_csv:
-            self.get_logger().error('Set input_csvs and/or reference_csv.')
+        if not input_csvs and not gnss_csv and not reference_csv:
+            self.get_logger().error('Set input_csvs, gnss_csv, and/or reference_csv.')
             return
         if time_mode not in ('relative', 'absolute'):
             self.get_logger().error("time_mode must be 'relative' or 'absolute'")
@@ -67,13 +79,28 @@ class PositionAnalysisNode(Node):
         try:
             series = []
             for index, csv_path in enumerate(input_csvs):
+                path = Path(csv_path)
+                if not path.exists():
+                    self.get_logger().warn(f'Input CSV not found, skipping: {csv_path}')
+                    continue
                 label = input_labels[index] if index < len(input_labels) else Path(csv_path).stem
                 series.append(read_plot_series(
-                    Path(csv_path),
+                    path,
                     label=label,
                     reference_filter='none',
                     start_time_s=start_time_s,
                     end_time_s=end_time_s,
+                    ecef_altitude_offset_m=ecef_altitude_offset_m,
+                ))
+
+            if gnss_csv:
+                series.append(read_plot_series(
+                    Path(gnss_csv),
+                    label=gnss_label,
+                    reference_filter=gnss_filter,
+                    start_time_s=start_time_s,
+                    end_time_s=end_time_s,
+                    ecef_altitude_offset_m=ecef_altitude_offset_m,
                 ))
 
             if reference_csv:
@@ -83,7 +110,12 @@ class PositionAnalysisNode(Node):
                     reference_filter=reference_filter,
                     start_time_s=start_time_s,
                     end_time_s=end_time_s,
+                    ecef_altitude_offset_m=ecef_altitude_offset_m,
                 ))
+
+            if not series:
+                self.get_logger().error('No valid CSV series to plot.')
+                return
 
             normalize_time(series, mode=time_mode)
             output_dir.mkdir(parents=True, exist_ok=True)
@@ -91,7 +123,7 @@ class PositionAnalysisNode(Node):
             plot_attitude_series(series, output_dir / 'attitude.png', dpi=dpi)
             plot_velocity_series(series, output_dir / 'velocity.png', dpi=dpi)
         except Exception as exc:
-            self.get_logger().error(f'Position analysis failed: {exc}', exc_info=True)
+            self.get_logger().error(f'Position analysis failed: {exc}')
             return
 
         self.get_logger().info(f'Wrote coordinate plot: {output_dir / "coordinates.png"}')
@@ -108,6 +140,7 @@ def read_plot_series(
     reference_filter: str,
     start_time_s: Optional[float],
     end_time_s: Optional[float],
+    ecef_altitude_offset_m: float = -46.5,
 ) -> PlotSeries:
     if reference_filter not in ('none', 'rtk_fixed', 'rtk_fixed_if_available'):
         raise ValueError("reference_filter must be 'none', 'rtk_fixed', or 'rtk_fixed_if_available'")
@@ -149,7 +182,7 @@ def read_plot_series(
     times = [item[0] for item in rows]
     row_values = [item[1] for item in rows]
 
-    lat, lon, alt = _read_llh_columns(row_values)
+    lat, lon, alt = _read_llh_columns(row_values, ecef_altitude_offset_m)
     roll, pitch, yaw = _read_attitude_columns(row_values)
     vn, ve, vd = _read_velocity_columns(row_values, lat, lon)
     return PlotSeries(
@@ -178,9 +211,9 @@ def normalize_time(series: Sequence[PlotSeries], mode: str) -> None:
 def plot_coordinate_series(series: Sequence[PlotSeries], output_path: Path, dpi: int) -> None:
     plt = _load_pyplot()
     fig, axes = plt.subplots(3, 1, figsize=(9.0, 5.4), sharex=True)
-    _plot_axis(axes[0], series, 'latitude_deg', 'Latitude', '(deg)')
-    _plot_axis(axes[1], series, 'longitude_deg', 'Longitude', '(deg)')
-    _plot_axis(axes[2], series, 'altitude_m', 'Height', '(m)')
+    _plot_axis(axes[0], series, 'latitude_deg', 'Latitude', '(deg)', style='scatter')
+    _plot_axis(axes[1], series, 'longitude_deg', 'Longitude', '(deg)', style='scatter')
+    _plot_axis(axes[2], series, 'altitude_m', 'Height', '(m)', style='scatter')
     axes[2].set_xlabel('Time (sec)')
     _finish_figure(fig, axes, output_path, dpi)
 
@@ -205,13 +238,74 @@ def plot_velocity_series(series: Sequence[PlotSeries], output_path: Path, dpi: i
     _finish_figure(fig, axes, output_path, dpi)
 
 
-def _plot_axis(axis, series: Sequence[PlotSeries], field_name: str, title: str, unit: str) -> None:
+def _plot_axis(
+    axis,
+    series: Sequence[PlotSeries],
+    field_name: str,
+    title: str,
+    unit: str,
+    style: str = 'line',
+) -> None:
     plotted = False
-    for sample in series:
+    scatter_styles = (
+        {
+            'marker': 'o',
+            's': 6,
+            'alpha': 0.65,
+            'linewidths': 0.0,
+            'color': '#1f77b4',
+            'zorder': 2,
+        },
+        {
+            'marker': 'x',
+            's': 8,
+            'alpha': 0.75,
+            'linewidths': 0.4,
+            'color': '#d62728',
+            'zorder': 3,
+        },
+        {
+            'marker': '^',
+            's': 8,
+            'alpha': 0.75,
+            'linewidths': 0.4,
+            'facecolors': 'none',
+            'edgecolors': '#2ca02c',
+            'zorder': 4,
+        },
+        {
+            'marker': 's',
+            's': 7,
+            'alpha': 0.7,
+            'linewidths': 0.35,
+            'facecolors': 'none',
+            'edgecolors': '#9467bd',
+            'zorder': 3,
+        },
+        {
+            'marker': 'D',
+            's': 7,
+            'alpha': 0.7,
+            'linewidths': 0.35,
+            'facecolors': 'none',
+            'edgecolors': '#ff7f0e',
+            'zorder': 3,
+        },
+    )
+    for series_index, sample in enumerate(series):
         values = getattr(sample, field_name)
         if values is None:
             continue
-        axis.plot(sample.time_s, values, linewidth=1.4, label=sample.label)
+        if style == 'scatter':
+            scatter_style = scatter_styles[series_index % len(scatter_styles)]
+            axis.scatter(
+                sample.time_s,
+                values,
+                label=sample.label,
+                **scatter_style,
+            )
+        else:
+            axis.plot(sample.time_s, values, linewidth=1.4, label=sample.label)
         plotted = True
     axis.set_title(title, fontsize=10, fontweight='bold', pad=3)
     axis.set_ylabel(unit, rotation=0, labelpad=20)
@@ -239,12 +333,15 @@ def _finish_figure(fig, axes, output_path: Path, dpi: int) -> None:
     _load_pyplot().close(fig)
 
 
-def _read_llh_columns(rows: Sequence[Dict[str, str]]):
+def _read_llh_columns(rows: Sequence[Dict[str, str]], ecef_altitude_offset_m: float):
     if not rows or not _has_any(rows[0], ('latitude_deg', 'lat_deg', 'latitude', 'lat')):
         return None, None, None
     lat = [_float_any(row, ('latitude_deg', 'lat_deg', 'latitude', 'lat')) for row in rows]
     lon = [_float_any(row, ('longitude_deg', 'lon_deg', 'longitude', 'lon')) for row in rows]
-    alt = [_read_altitude_m(row) for row in rows]
+    alt = [
+        _read_altitude_m(row) + (_ecef_altitude_offset_m(row, ecef_altitude_offset_m))
+        for row in rows
+    ]
     return lat, lon, alt
 
 
@@ -333,11 +430,17 @@ def _read_time(row: Dict[str, str]) -> float:
 def _read_altitude_m(row: Dict[str, str]) -> float:
     if _has(row, 'altitude_m'):
         return _float(row, 'altitude_m')
-    if _has(row, 'height_msl_m') and _has(row, 'undulation_m'):
-        return _float(row, 'height_msl_m') + _float(row, 'undulation_m')
+    if _has(row, 'height_msl_m'):
+        return _float(row, 'height_msl_m')
     if _has(row, 'hgt') and _has(row, 'undulation'):
         return _float(row, 'hgt') + _float(row, 'undulation')
     return _float_any(row, ('height_m', 'height_msl_m', 'hgt', 'alt'))
+
+
+def _ecef_altitude_offset_m(row: Dict[str, str], offset_m: float) -> float:
+    if all(_has(row, name) for name in ('x_ecef_m', 'y_ecef_m', 'z_ecef_m')):
+        return offset_m
+    return 0.0
 
 
 def _read_rtk_fixed_status(row: Dict[str, str]) -> Optional[bool]:
@@ -392,8 +495,10 @@ def _split_list(value: str) -> List[str]:
     return [item.strip() for item in normalized.split(',') if item.strip()]
 
 
-def _optional_param_float(value: str) -> Optional[float]:
-    text = value.strip()
+def _optional_param_float(value) -> Optional[float]:
+    if value is None:
+        return None
+    text = str(value).strip()
     return float(text) if text else None
 
 

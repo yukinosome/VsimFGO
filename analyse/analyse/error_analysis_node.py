@@ -71,14 +71,19 @@ class ErrorAnalysisNode(Node):
         super().__init__('error_analysis')
 
         self.declare_parameter('estimate_csv', '')
+        self.declare_parameter('gnss_imu_fgo_csv', '/Data/gnss_imu_fgo_output.csv')
+        self.declare_parameter('gnss_imu_fgo_label', 'GNSS IMU FGO')
         self.declare_parameter('reference_csv', '')
         self.declare_parameter('output_csv', '')
         self.declare_parameter('output_errors_csv', '')
         self.declare_parameter('max_time_difference_s', 0.05)
         self.declare_parameter('smoothness_mode', 'sum_squared_jerk')
         self.declare_parameter('reference_filter', 'rtk_fixed_if_available')
+        self.declare_parameter('analysis_fraction', 1.0)
 
         estimate_csv = self._param_str('estimate_csv')
+        gnss_imu_fgo_csv = self._param_str('gnss_imu_fgo_csv')
+        gnss_imu_fgo_label = self._param_str('gnss_imu_fgo_label')
         reference_csv = self._param_str('reference_csv')
         output_csv = self._param_str('output_csv')
         output_errors_csv = self._param_str('output_errors_csv')
@@ -86,8 +91,23 @@ class ErrorAnalysisNode(Node):
             'max_time_difference_s').get_parameter_value().double_value
         smoothness_mode = self._param_str('smoothness_mode')
         reference_filter = self._param_str('reference_filter')
+        analysis_fraction = self.get_parameter(
+            'analysis_fraction').get_parameter_value().double_value
+        if analysis_fraction <= 0.0 or analysis_fraction > 1.0:
+            self.get_logger().error('analysis_fraction must be in the range (0.0, 1.0].')
+            return
 
-        if not estimate_csv or not reference_csv:
+        estimate_jobs = []
+        if estimate_csv:
+            estimate_jobs.append(('estimate', Path(estimate_csv)))
+        if gnss_imu_fgo_csv:
+            gnss_imu_fgo_path = Path(gnss_imu_fgo_csv)
+            if gnss_imu_fgo_path.exists():
+                estimate_jobs.append((gnss_imu_fgo_label, gnss_imu_fgo_path))
+            else:
+                self.get_logger().warn(f'GNSS IMU FGO CSV not found, skipping: {gnss_imu_fgo_csv}')
+
+        if not estimate_jobs or not reference_csv:
             self.get_logger().error(
                 'Please set estimate_csv and reference_csv, for example: '
                 'ros2 run analyse error_analysis --ros-args '
@@ -96,30 +116,38 @@ class ErrorAnalysisNode(Node):
             return
 
         try:
-            estimate = read_trajectory_csv(Path(estimate_csv))
-            reference, reference_stats = read_reference_trajectory_csv(
-                Path(reference_csv),
-                reference_filter=reference_filter,
-            )
-            metrics, errors = compute_metrics(
-                estimate,
-                reference,
-                max_time_difference_s=max_time_difference_s,
-                smoothness_mode=smoothness_mode,
-                reference_stats=reference_stats,
-            )
+            results = []
+            for label, estimate_path in estimate_jobs:
+                reference_altitude_mode = _reference_altitude_mode_for_estimate(estimate_path)
+                reference, reference_stats = read_reference_trajectory_csv(
+                    Path(reference_csv),
+                    reference_filter=reference_filter,
+                    altitude_mode=reference_altitude_mode,
+                )
+                estimate = read_trajectory_csv(estimate_path)
+                estimate = _take_initial_fraction(estimate, analysis_fraction)
+                metrics, errors = compute_metrics(
+                    estimate,
+                    reference,
+                    max_time_difference_s=max_time_difference_s,
+                    smoothness_mode=smoothness_mode,
+                    reference_stats=reference_stats,
+                )
+                results.append((label, metrics, errors))
         except Exception as exc:
             self.get_logger().error(f'Error analysis failed: {exc}', exc_info=True)
             return
 
-        self._log_metrics(metrics)
+        for label, metrics, _ in results:
+            self.get_logger().info(f'Estimate series: {label}')
+            self._log_metrics(metrics)
 
         if output_csv:
-            write_metrics_csv(Path(output_csv), metrics)
+            write_metrics_csv(Path(output_csv), results)
             self.get_logger().info(f'Wrote metrics CSV: {output_csv}')
 
         if output_errors_csv:
-            write_errors_csv(Path(output_errors_csv), errors)
+            write_errors_csv(Path(output_errors_csv), results)
             self.get_logger().info(f'Wrote per-sample error CSV: {output_errors_csv}')
 
     def _param_str(self, name: str) -> str:
@@ -185,15 +213,22 @@ def read_trajectory_csv(path: Path) -> List[TrajectorySample]:
     return _deduplicate_times(samples)
 
 
-def read_reference_trajectory_csv(path: Path, reference_filter: str) -> Tuple[List[TrajectorySample], TrajectoryCsvStats]:
+def read_reference_trajectory_csv(
+    path: Path,
+    reference_filter: str,
+    altitude_mode: str = 'msl',
+) -> Tuple[List[TrajectorySample], TrajectoryCsvStats]:
     if reference_filter not in ('none', 'rtk_fixed', 'rtk_fixed_if_available'):
         raise ValueError("reference_filter must be 'none', 'rtk_fixed', or 'rtk_fixed_if_available'")
-    return _read_trajectory_csv_with_stats(path, reference_filter=reference_filter)
+    if altitude_mode not in ('msl', 'ellipsoid'):
+        raise ValueError("altitude_mode must be 'msl' or 'ellipsoid'")
+    return _read_trajectory_csv_with_stats(path, reference_filter=reference_filter, altitude_mode=altitude_mode)
 
 
 def _read_trajectory_csv_with_stats(
     path: Path,
     reference_filter: str,
+    altitude_mode: str = 'msl',
 ) -> Tuple[List[TrajectorySample], TrajectoryCsvStats]:
     if not path.exists():
         raise FileNotFoundError(path)
@@ -231,7 +266,7 @@ def _read_trajectory_csv_with_stats(
                     continue
 
                 time_s = _read_time(row)
-                ecef = _read_ecef(row)
+                ecef = _read_ecef(row, altitude_mode=altitude_mode)
                 yaw = _read_yaw(row)
             except ValueError as exc:
                 raise ValueError(f'{path}:{row_index}: {exc}') from exc
@@ -404,11 +439,15 @@ def compute_smoothness(
     raise ValueError("smoothness_mode must be 'sum_squared_jerk' or 'mean_squared_jerk'")
 
 
-def write_metrics_csv(path: Path, metrics: ErrorMetrics) -> None:
+def write_metrics_csv(
+    path: Path,
+    results: Sequence[Tuple[str, ErrorMetrics, Sequence[Dict[str, Optional[float]]]]],
+) -> None:
     path.expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
     with path.open('w', newline='', encoding='utf-8') as csv_file:
         writer = csv.writer(csv_file)
         writer.writerow([
+            'estimate_label',
             'count',
             'start_time_s',
             'end_time_s',
@@ -428,34 +467,40 @@ def write_metrics_csv(path: Path, metrics: ErrorMetrics) -> None:
             'reference_rtk_fixed_ratio_percent',
             'reference_used_count',
         ])
-        writer.writerow([
-            metrics.count,
-            f'{metrics.start_time_s:.9f}',
-            f'{metrics.end_time_s:.9f}',
-            f'{metrics.mean_2d_pos_error_m:.9f}',
-            f'{metrics.std_2d_pos_error_m:.9f}',
-            f'{metrics.max_2d_pos_error_m:.9f}',
-            f'{metrics.mean_3d_pos_error_m:.9f}',
-            f'{metrics.std_3d_pos_error_m:.9f}',
-            f'{metrics.max_3d_pos_error_m:.9f}',
-            _optional_float(metrics.mean_yaw_error_deg),
-            _optional_float(metrics.std_yaw_error_deg),
-            _optional_float(metrics.max_yaw_error_deg),
-            f'{metrics.smoothness_s:.9f}',
-            metrics.reference_total_count,
-            metrics.reference_rtk_status_count,
-            metrics.reference_rtk_fixed_count,
-            _optional_float(
-                metrics.reference_rtk_fixed_ratio * 100.0
-                if metrics.reference_rtk_fixed_ratio is not None
-                else None),
-            metrics.reference_used_count,
-        ])
+        for label, metrics, _ in results:
+            writer.writerow([
+                label,
+                metrics.count,
+                f'{metrics.start_time_s:.9f}',
+                f'{metrics.end_time_s:.9f}',
+                f'{metrics.mean_2d_pos_error_m:.9f}',
+                f'{metrics.std_2d_pos_error_m:.9f}',
+                f'{metrics.max_2d_pos_error_m:.9f}',
+                f'{metrics.mean_3d_pos_error_m:.9f}',
+                f'{metrics.std_3d_pos_error_m:.9f}',
+                f'{metrics.max_3d_pos_error_m:.9f}',
+                _optional_float(metrics.mean_yaw_error_deg),
+                _optional_float(metrics.std_yaw_error_deg),
+                _optional_float(metrics.max_yaw_error_deg),
+                f'{metrics.smoothness_s:.9f}',
+                metrics.reference_total_count,
+                metrics.reference_rtk_status_count,
+                metrics.reference_rtk_fixed_count,
+                _optional_float(
+                    metrics.reference_rtk_fixed_ratio * 100.0
+                    if metrics.reference_rtk_fixed_ratio is not None
+                    else None),
+                metrics.reference_used_count,
+            ])
 
 
-def write_errors_csv(path: Path, errors: Sequence[Dict[str, Optional[float]]]) -> None:
+def write_errors_csv(
+    path: Path,
+    results: Sequence[Tuple[str, ErrorMetrics, Sequence[Dict[str, Optional[float]]]]],
+) -> None:
     path.expanduser().resolve().parent.mkdir(parents=True, exist_ok=True)
     fieldnames = [
+        'estimate_label',
         'time_s',
         'reference_time_s',
         'east_error_m',
@@ -468,8 +513,15 @@ def write_errors_csv(path: Path, errors: Sequence[Dict[str, Optional[float]]]) -
     with path.open('w', newline='', encoding='utf-8') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
         writer.writeheader()
-        for row in errors:
-            writer.writerow({key: _optional_float(row[key]) for key in fieldnames})
+        for label, _, errors in results:
+            for row in errors:
+                output_row = {'estimate_label': label}
+                output_row.update({
+                    key: _optional_float(row[key])
+                    for key in fieldnames
+                    if key != 'estimate_label'
+                })
+                writer.writerow(output_row)
 
 
 def _read_time(row: Dict[str, str]) -> float:
@@ -478,10 +530,10 @@ def _read_time(row: Dict[str, str]) -> float:
     for name in ('time_s', 'timestamp_s', 'timestamp', 'stamp', 't'):
         if _has(row, name):
             return _float(row, name)
-    raise ValueError('missing time column: use stamp_sec/stamp_nanosec or time_s')
+    raise ValueError('missing time column: use stamp_sec/stamp_nanosec or time_s/stamp')
 
 
-def _read_ecef(row: Dict[str, str]) -> Tuple[float, float, float]:
+def _read_ecef(row: Dict[str, str], altitude_mode: str = 'msl') -> Tuple[float, float, float]:
     if _has_any(row, ('x_ecef_m', 'ecef_x_m', 'x')):
         x = _float_any(row, ('x_ecef_m', 'ecef_x_m', 'x'))
         y = _float_any(row, ('y_ecef_m', 'ecef_y_m', 'y'))
@@ -490,20 +542,24 @@ def _read_ecef(row: Dict[str, str]) -> Tuple[float, float, float]:
 
     lat = _float_any(row, ('latitude_deg', 'lat_deg', 'latitude', 'lat'))
     lon = _float_any(row, ('longitude_deg', 'lon_deg', 'longitude', 'lon'))
-    alt = _read_altitude_m(row)
+    alt = _read_altitude_m(row, altitude_mode=altitude_mode)
 
     if abs(lat) <= math.pi and abs(lon) <= 2.0 * math.pi:
         return llh_to_ecef_rad(lat, lon, alt)
     return llh_to_ecef_rad(math.radians(lat), math.radians(lon), alt)
 
 
-def _read_altitude_m(row: Dict[str, str]) -> float:
+def _read_altitude_m(row: Dict[str, str], altitude_mode: str = 'msl') -> float:
+    if _has(row, 'alt'):
+        return _float(row, 'alt')
     if _has(row, 'altitude_m'):
         return _float(row, 'altitude_m')
+    if _has(row, 'height_msl_m'):
+        if altitude_mode == 'ellipsoid' and _has(row, 'undulation_m'):
+            return _float(row, 'height_msl_m') + _float(row, 'undulation_m')
+        return _float(row, 'height_msl_m')
     if _has(row, 'height_m') and not _has(row, 'undulation_m'):
         return _float(row, 'height_m')
-    if _has(row, 'height_msl_m') and _has(row, 'undulation_m'):
-        return _float(row, 'height_msl_m') + _float(row, 'undulation_m')
     if _has(row, 'hgt') and _has(row, 'undulation'):
         return _float(row, 'hgt') + _float(row, 'undulation')
     return _float_any(row, ('height_m', 'height_msl_m', 'hgt', 'alt'))
@@ -600,6 +656,13 @@ def _deduplicate_times(samples: Sequence[TrajectorySample]) -> List[TrajectorySa
     return deduped
 
 
+def _take_initial_fraction(samples: Sequence[TrajectorySample], fraction: float) -> List[TrajectorySample]:
+    if fraction >= 1.0:
+        return list(samples)
+    count = max(2, math.ceil(len(samples) * fraction))
+    return list(samples[:count])
+
+
 def _row_is_empty(row: Dict[str, str]) -> bool:
     return all(value is None or str(value).strip() == '' for value in row.values())
 
@@ -621,6 +684,18 @@ def _float_any(row: Dict[str, str], names: Iterable[str]) -> float:
         if _has(row, name):
             return _float(row, name)
     raise ValueError(f'missing numeric column; expected one of: {", ".join(names)}')
+
+
+def _reference_altitude_mode_for_estimate(path: Path) -> str:
+    with path.open('r', newline='', encoding='utf-8') as csv_file:
+        reader = csv.DictReader(csv_file)
+        fieldnames = set(reader.fieldnames or [])
+    has_ecef = (
+        any(name in fieldnames for name in ('x_ecef_m', 'ecef_x_m', 'x'))
+        and any(name in fieldnames for name in ('y_ecef_m', 'ecef_y_m', 'y'))
+        and any(name in fieldnames for name in ('z_ecef_m', 'ecef_z_m', 'z'))
+    )
+    return 'ellipsoid' if has_ecef else 'msl'
 
 
 def _read_rtk_fixed_status(row: Dict[str, str]) -> Optional[bool]:
