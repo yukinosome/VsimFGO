@@ -59,7 +59,7 @@ def generate_launch_description():
     default_config_sensor_parameters = os.path.join(
         get_package_share_directory('online_fgo'),
         'config/aachen_lc',
-        'sensor_parameters.yaml'
+        'sensor_parameters_insane.yaml'
     )
     declare_config_sensor_parameters_path_cmd = DeclareLaunchArgument(
         'config_sensor_parameters_path',

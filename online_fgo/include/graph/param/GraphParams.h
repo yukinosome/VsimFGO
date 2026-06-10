@@ -63,6 +63,8 @@ namespace fgo::graph {
     bool AutoDiffGPInterpolatedFactor = true;
     bool AutoDiffGPMotionPriorFactor = false;
     bool GPInterpolatedFactorCalcJacobian = true;
+    bool useNNGPResidual = false;
+    std::string NNGPResidualModelPath;
 
     bool addEstimatedVarianceAfterInit = false;
     bool addConstDriftFactor = false;
@@ -81,6 +83,13 @@ namespace fgo::graph {
     bool NoOptimizationNearZeroVelocity = true;
     double VoteNearZeroVelocity = 0.1;
     int NoOptimizationAfterStates = 500;
+
+    bool addStartupStatePrior = false;
+    int startupStatePriorCount = 0;
+    gtsam::Vector6 startupPosePriorSigmas = (gtsam::Vector6() << 0.5, 0.5, 0.5, 5., 5., 5.).finished();
+    gtsam::Vector3 startupVelPriorSigmas = (gtsam::Vector3() << 2., 2., 2.).finished();
+    gtsam::Vector3 startupOmegaPriorSigmas = (gtsam::Vector3() << 0.2, 0.2, 0.2).finished();
+    gtsam::Vector6 startupBiasPriorSigmas = (gtsam::Vector6() << 0.2, 0.2, 0.2, 0.02, 0.02, 0.02).finished();
 
     GraphParamBase() = default;
 

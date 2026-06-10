@@ -305,6 +305,7 @@ namespace fgo::integrator {
     } else {
       RCLCPP_WARN_STREAM(rosNodePtr_->get_logger(), integratorName_ + ": NO gpType chosen. Please choose.");
     }
+    interpolator_ = maybeWrapNNGPResidualInterpolator(interpolator_, integratorName_);
 
     RCLCPP_INFO(rosNodePtr_->get_logger(), "--------------------- GNSSLCIntegrator initialized! ---------------------");
   }
@@ -329,7 +330,7 @@ namespace fgo::integrator {
 
     static gtsam::Key pose_key_j, vel_key_j, omega_key_j, bias_key_j,
       pose_key_i, vel_key_i, omega_key_i, bias_key_i,
-      pose_key_sync, vel_key_sync, bias_key_sync;
+      pose_key_sync, vel_key_sync, omega_key_sync, bias_key_sync;
 
     static boost::circular_buffer<fgo::data::PVASolution> restGNSSMeas(100);
 
@@ -441,6 +442,7 @@ namespace fgo::integrator {
         if (syncResult.status == StateMeasSyncStatus::SYNCHRONIZED_I) {
           pose_key_sync = pose_key_i;
           vel_key_sync = vel_key_i;
+          omega_key_sync = omega_key_i;
           bias_key_sync = bias_key_i;
           RCLCPP_WARN_STREAM(rosNodePtr_->get_logger(),
                              integratorName_ + ": Found time synchronized state at I "
@@ -451,6 +453,7 @@ namespace fgo::integrator {
         } else {
           pose_key_sync = pose_key_j;
           vel_key_sync = vel_key_j;
+          omega_key_sync = omega_key_j;
           bias_key_sync = bias_key_j;
           RCLCPP_WARN_STREAM(rosNodePtr_->get_logger(),
                              integratorName_ + ": Found time synchronized state at J "
@@ -466,7 +469,7 @@ namespace fgo::integrator {
         if (integrateVelocity) {
           //RCLCPP_INFO_STREAM(appPtr_->get_logger(), "Integrating PVT ...");
 
-          this->addGNSSPVTFactor(pose_key_sync, vel_key_sync, bias_key_sync, pvaIter->xyz_ecef, pvaIter->vel_ecef,
+          this->addGNSSPVTFactor(pose_key_sync, vel_key_sync, omega_key_sync, pvaIter->xyz_ecef, pvaIter->vel_ecef,
                                  pvaIter->xyz_var * posVarScale, pvaIter->vel_var * velVarScale,
                                  baseToSensorTrans.translation());
 

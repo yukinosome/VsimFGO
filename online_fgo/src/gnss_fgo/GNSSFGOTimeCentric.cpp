@@ -144,7 +144,8 @@ namespace gnss_fgo {
         //rclcpp::sleep_for(std::chrono::nanoseconds(1000000));  // 10000000
         auto pvaDelay = this->PVTDelayCalculator_->getDelay()  + paramsPtr_->pvtMeasTimeOffset;
 
-        auto delayFromMsg = (thisPVATime - lastPVATime).seconds() - 0.1;
+        const auto expectedPVTPeriod = 1.0 / static_cast<double>(paramsPtr_->pvtMeasurementFrequency);
+        auto delayFromMsg = (thisPVATime - lastPVATime).seconds() - expectedPVTPeriod;
 
         if(first_measurement)
         {
@@ -185,4 +186,3 @@ namespace gnss_fgo {
 }
 #include <rclcpp_components/register_node_macro.hpp>
 RCLCPP_COMPONENTS_REGISTER_NODE(gnss_fgo::GNSSFGOTimeCentricNode)
-

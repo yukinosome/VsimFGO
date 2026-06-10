@@ -1,0 +1,41 @@
+---
+/deutschland/online_fgo:
+  ros__parameters:
+    GNSSFGO:
+      VehicleParameterPrefix: "GNSSFGO"
+      VehicleParameters:
+        # INSANE calibration uses the PX4 IMU frame as the base.
+        baseFrame: "imu"
+        sensors: [ "imu", "reference", "rtk1", "rtk2", "novatel_ant_main", "novatel_ant_aux" ]
+
+        imu:
+          # R_vc_pximu is identity in the INSANE calibration.
+          preRotate: [ 0., 0., 0. ]
+
+        # The active aachen_lc IRTPVALCIntegrator uses sensorName: "reference".
+        # Map it to RTK1, i.e. p_pximu_rtk1 from sensor_calibration.yaml.
+        reference:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0.350121933088198, 0.410121933088197, 0. ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+
+        rtk1:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0.350121933088198, 0.410121933088197, 0. ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+
+        rtk2:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ -0.470121933088198, -0.410121933088197, 0. ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+
+        # Compatibility names for existing GNSS-FGO configs.
+        novatel_ant_main:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0.350121933088198, 0.410121933088197, 0. ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+
+        novatel_ant_aux:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ -0.470121933088198, -0.410121933088197, 0. ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]

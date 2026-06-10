@@ -26,7 +26,7 @@ class StateCsvLoggerNode(Node):
         super().__init__('csv_logger')
 
         self.declare_parameter('input_topic', '/deutschland/stateOptimized')
-        self.declare_parameter('output_csv_path', '/Data/fgo_state_optimized.csv')
+        self.declare_parameter('output_csv_path', '/Data/fgo_nn_state.csv')
         self.declare_parameter('append', False)
         self.declare_parameter('novatel_bestpos_topic', '/novatel/oem7/bestpos')
         self.declare_parameter('novatel_rtk_csv_path', '/Data/novatel_rtk_fixed.csv')

@@ -251,6 +251,16 @@ namespace fgo::graph {
     RCLCPP_INFO_STREAM(appPtr_->get_logger(), "GPInterpolatedFactorCalcJacobian: "
       << (graphBaseParamPtr_->GPInterpolatedFactorCalcJacobian ? "true" : "false"));
 
+    RosParameter<bool> useNNGPResidual("GNSSFGO.Graph.useNNGPResidual", false, node);
+    graphBaseParamPtr_->useNNGPResidual = useNNGPResidual.value();
+    RCLCPP_INFO_STREAM(appPtr_->get_logger(), "useNNGPResidual: "
+      << (graphBaseParamPtr_->useNNGPResidual ? "true" : "false"));
+
+    RosParameter<std::string> NNGPResidualModelPath("GNSSFGO.Graph.NNGPResidualModelPath", "", node);
+    graphBaseParamPtr_->NNGPResidualModelPath = NNGPResidualModelPath.value();
+    RCLCPP_INFO_STREAM(appPtr_->get_logger(), "NNGPResidualModelPath: "
+      << graphBaseParamPtr_->NNGPResidualModelPath);
+
     RosParameter<bool> useEstimatedVarianceAfterInit("GNSSFGO.Graph.addEstimatedVarianceAfterInit", node);
     graphBaseParamPtr_->addEstimatedVarianceAfterInit = useEstimatedVarianceAfterInit.value();
     RCLCPP_INFO_STREAM(appPtr_->get_logger(), "addEstimatedVarianceAfterInit: "
@@ -309,6 +319,60 @@ namespace fgo::graph {
     graphBaseParamPtr_->VoteNearZeroVelocity = VoteNearZeroVelocity.value();
     RosParameter<int> NoOptimizationAfterStates("GNSSFGO.Graph.NoOptimizationAfterStates", node);
     graphBaseParamPtr_->NoOptimizationAfterStates = NoOptimizationAfterStates.value();
+
+    RosParameter<bool> addStartupStatePrior("GNSSFGO.Graph.addStartupStatePrior", false, node);
+    graphBaseParamPtr_->addStartupStatePrior = addStartupStatePrior.value();
+    RCLCPP_INFO_STREAM(appPtr_->get_logger(), "addStartupStatePrior: "
+      << (graphBaseParamPtr_->addStartupStatePrior ? "true" : "false"));
+
+    RosParameter<int> startupStatePriorCount("GNSSFGO.Graph.startupStatePriorCount", 0, node);
+    graphBaseParamPtr_->startupStatePriorCount = startupStatePriorCount.value();
+    RCLCPP_INFO_STREAM(appPtr_->get_logger(), "startupStatePriorCount: "
+      << graphBaseParamPtr_->startupStatePriorCount);
+
+    RosParameter<std::vector<double>> startupPosePriorSigmas(
+      "GNSSFGO.Graph.startupPosePriorSigmas",
+      std::vector<double>{0.5, 0.5, 0.5, 5., 5., 5.},
+      node);
+    if (startupPosePriorSigmas.value().size() == 6) {
+      graphBaseParamPtr_->startupPosePriorSigmas = gtsam::Vector6(startupPosePriorSigmas.value().data());
+    } else {
+      RCLCPP_WARN_STREAM(appPtr_->get_logger(),
+                         "startupPosePriorSigmas must contain 6 values; keeping default.");
+    }
+
+    RosParameter<std::vector<double>> startupVelPriorSigmas(
+      "GNSSFGO.Graph.startupVelPriorSigmas",
+      std::vector<double>{2., 2., 2.},
+      node);
+    if (startupVelPriorSigmas.value().size() == 3) {
+      graphBaseParamPtr_->startupVelPriorSigmas = gtsam::Vector3(startupVelPriorSigmas.value().data());
+    } else {
+      RCLCPP_WARN_STREAM(appPtr_->get_logger(),
+                         "startupVelPriorSigmas must contain 3 values; keeping default.");
+    }
+
+    RosParameter<std::vector<double>> startupOmegaPriorSigmas(
+      "GNSSFGO.Graph.startupOmegaPriorSigmas",
+      std::vector<double>{0.2, 0.2, 0.2},
+      node);
+    if (startupOmegaPriorSigmas.value().size() == 3) {
+      graphBaseParamPtr_->startupOmegaPriorSigmas = gtsam::Vector3(startupOmegaPriorSigmas.value().data());
+    } else {
+      RCLCPP_WARN_STREAM(appPtr_->get_logger(),
+                         "startupOmegaPriorSigmas must contain 3 values; keeping default.");
+    }
+
+    RosParameter<std::vector<double>> startupBiasPriorSigmas(
+      "GNSSFGO.Graph.startupBiasPriorSigmas",
+      std::vector<double>{0.2, 0.2, 0.2, 0.02, 0.02, 0.02},
+      node);
+    if (startupBiasPriorSigmas.value().size() == 6) {
+      graphBaseParamPtr_->startupBiasPriorSigmas = gtsam::Vector6(startupBiasPriorSigmas.value().data());
+    } else {
+      RCLCPP_WARN_STREAM(appPtr_->get_logger(),
+                         "startupBiasPriorSigmas must contain 6 values; keeping default.");
+    }
 
     RosParameter<std::vector<std::string>> integratorNames("GNSSFGO.Integrators", node);
 

@@ -88,6 +88,8 @@ namespace fgo::integrator {
     } else {
       RCLCPP_WARN(rosNodePtr_->get_logger(), "LIOIntegrator::addFactors NO gpType chosen. Please choose.");
     }
+    interpolatorI_ = maybeWrapNNGPResidualInterpolator(interpolatorI_, integratorName_ + "/I");
+    interpolatorJ_ = maybeWrapNNGPResidualInterpolator(interpolatorJ_, integratorName_ + "/J");
 
     RCLCPP_INFO(rosNodePtr_->get_logger(), "--------------------- LIOIntegrator initialized! ---------------------");
 

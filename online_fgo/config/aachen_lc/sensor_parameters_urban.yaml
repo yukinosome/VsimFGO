@@ -1,0 +1,70 @@
+---
+/deutschland/online_fgo:
+  ros__parameters:
+    GNSSFGO:
+      VehicleParameterPrefix: "GNSSFGO"
+      VehicleParameters:
+        # UrbanNav-HK-Deep-Urban-1 / Whampoa calibration.
+        # The UrbanNav extrinsic file states that the body frame is fixed at the IMU frame.
+        baseFrame: "imu"
+        sensors: [ "imu", "reference", "span", "gnss_ant_main", "novatel_ant_main", "vlp16", "lidar_left", "lidar_right", "zed_left", "zed_right" ]
+
+        imu:
+          preRotate: [ 0., 0., 0. ]
+
+        # Use this as the active reference when PVTSource is "span" or when
+        # /novatel_data/inspvax is converted to /irt_gnss_preprocessing/PVT.
+        # Source: body_T_SPAN translation in UrbanNav-HK-Deep-Urban-1/extrinsic.yaml.
+        reference:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0., 0., 0.14 ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+
+        span:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0., 0., 0.14 ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+
+        # GNSS antenna lever arm from ANTENNA_T_IMU in the UrbanNav file.
+        # The file labels this as antenna-to-IMU; keep it separate from
+        # "reference" so SPAN-CPT measurements are not assigned to the antenna.
+        gnss_ant_main:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0., 0.86, -0.31 ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+
+        novatel_ant_main:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0., 0.86, -0.31 ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+
+        # Center LiDAR, topic /velodyne_points.
+        # Source: CENTER_LiDAR_T_IMU.
+        vlp16:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0., 0., 0.28 ]
+          rotFromBase: [ 1., 0., 0., 0., 1., 0., 0., 0., 1. ]
+
+        # Source: LEFT_LiDAR_T_CENTER_LiDAR composed with CENTER_LiDAR_T_IMU.
+        lidar_left:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ -0.49870412, 0.002541099, -0.06672868 ]
+          rotFromBase: [ -0.00848239, -0.561875, -0.827179, 0.999415, -0.0321631, 0.0115987, -0.0331216, -0.826597, 0.561819 ]
+
+        # Source: RIGHT_LiDAR_T_CENTER_LiDAR composed with CENTER_LiDAR_T_IMU.
+        lidar_right:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0.55435648, -0.007317278, -0.04219104 ]
+          rotFromBase: [ 0.566085, 0.0347042, 0.823616, -0.0296934, 0.999323, -0.0216991, -0.823812, -0.0121725, 0.566732 ]
+
+        # Source: LEFT_CAMERA_T_IMU.
+        zed_left:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ -0.0849942494565455, 0.661693370791432, -3.01042661833359 ]
+          rotFromBase: [ 0.998852344026359, 0.00135911588859818, 0.0478763786960621, -0.0478641883492691, -0.00790912585384262, 0.998822539394208, 0.00173617588771404, -0.999967798747654, -0.00783499591942971 ]
+
+        # Source: RIGHT_CAMERA_T_IMU.
+        zed_right:
+          preRotate: [ 0., 0., 0. ]
+          transFromBase: [ 0.0753322976295901, 0.68331281093016, -3.00796276495202 ]
+          rotFromBase: [ 0.998728714527498, 0.00152876377775978, 0.050384696680271, -0.050367177375936, -0.00989676862598099, 0.998681731791438, 0.00202539414240803, -0.999949857168886, -0.0098071874914416 ]
