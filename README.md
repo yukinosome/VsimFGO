@@ -21,7 +21,7 @@ This project is a learning-oriented extension of the gnssFGO algorithm. Building
 | **VsimFGO** | Derivative learning project extending visual factor support |
 
 ## How to start
-
+**1. Build the container**
 ```bash
 git clone https://github.com/yukinosome/VsimFGO.git
 cd gnssFGO/docker
@@ -29,7 +29,7 @@ docker build -t haomingac/gnssfgo:latest
 docker compose up -d
 ```
 
-How to start the container:
+**2. How to start the container:**
 ```bash
 docker start gnssfgo
 ```
@@ -38,3 +38,9 @@ You can access the container interactively:
 ```bash
 docker exec -it gnssfgo bash
 ```
+**3. Start the program**
+```bash
+cd workspace/fgo_ws
+colcon build
+source install/setup.bash
+ros2 launch online_fgo aachen_lc_all.launch.py

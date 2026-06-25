@@ -6,8 +6,8 @@
       verbose: false
       useIMUAsTimeReference: false
       bufferSize: 10
-      optFrequency: 5 #in Hz
-      stateFrequency: 5
+      optFrequency: 10 #in Hz
+      stateFrequency: 10
       calcErrorOnOpt: true
       cleanIMUonInit: true    # set this flag to clean the imu data before the timestamp of the initializing state
       useHeaderTimestamp: true
