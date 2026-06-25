@@ -251,6 +251,16 @@ namespace fgo::graph {
     RCLCPP_INFO_STREAM(appPtr_->get_logger(), "GPInterpolatedFactorCalcJacobian: "
       << (graphBaseParamPtr_->GPInterpolatedFactorCalcJacobian ? "true" : "false"));
 
+    RosParameter<bool> useNNGPResidual("GNSSFGO.Graph.useNNGPResidual", false, node);
+    graphBaseParamPtr_->useNNGPResidual = useNNGPResidual.value();
+    RCLCPP_INFO_STREAM(appPtr_->get_logger(), "useNNGPResidual: "
+      << (graphBaseParamPtr_->useNNGPResidual ? "true" : "false"));
+
+    RosParameter<std::string> NNGPResidualModelPath("GNSSFGO.Graph.NNGPResidualModelPath", "", node);
+    graphBaseParamPtr_->NNGPResidualModelPath = NNGPResidualModelPath.value();
+    RCLCPP_INFO_STREAM(appPtr_->get_logger(), "NNGPResidualModelPath: "
+      << graphBaseParamPtr_->NNGPResidualModelPath);
+
     RosParameter<bool> useEstimatedVarianceAfterInit("GNSSFGO.Graph.addEstimatedVarianceAfterInit", node);
     graphBaseParamPtr_->addEstimatedVarianceAfterInit = useEstimatedVarianceAfterInit.value();
     RCLCPP_INFO_STREAM(appPtr_->get_logger(), "addEstimatedVarianceAfterInit: "

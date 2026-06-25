@@ -71,7 +71,9 @@ class ErrorAnalysisNode(Node):
         super().__init__('error_analysis')
 
         self.declare_parameter('estimate_csv', '')
-        self.declare_parameter('gnss_imu_fgo_csv', '/Data/gnss_imu_fgo_output.csv')
+        self.declare_parameter('estimate_csvs', '')
+        self.declare_parameter('estimate_labels', '')
+        self.declare_parameter('gnss_imu_fgo_csv', '/Data/gnss_imu_fgo_output_1.csv')
         self.declare_parameter('gnss_imu_fgo_label', 'GNSS IMU FGO')
         self.declare_parameter('reference_csv', '')
         self.declare_parameter('output_csv', '')
@@ -82,6 +84,8 @@ class ErrorAnalysisNode(Node):
         self.declare_parameter('analysis_fraction', 1.0)
 
         estimate_csv = self._param_str('estimate_csv')
+        estimate_csvs = _split_list(self._param_str('estimate_csvs'))
+        estimate_labels = _split_list(self._param_str('estimate_labels'))
         gnss_imu_fgo_csv = self._param_str('gnss_imu_fgo_csv')
         gnss_imu_fgo_label = self._param_str('gnss_imu_fgo_label')
         reference_csv = self._param_str('reference_csv')
@@ -98,20 +102,25 @@ class ErrorAnalysisNode(Node):
             return
 
         estimate_jobs = []
+        for index, csv_path in enumerate(estimate_csvs):
+            label = estimate_labels[index] if index < len(estimate_labels) else Path(csv_path).stem
+            estimate_jobs.append((label, Path(csv_path)))
         if estimate_csv:
             estimate_jobs.append(('estimate', Path(estimate_csv)))
         if gnss_imu_fgo_csv:
             gnss_imu_fgo_path = Path(gnss_imu_fgo_csv)
-            if gnss_imu_fgo_path.exists():
+            if _path_already_queued(gnss_imu_fgo_path, estimate_jobs):
+                pass
+            elif gnss_imu_fgo_path.exists():
                 estimate_jobs.append((gnss_imu_fgo_label, gnss_imu_fgo_path))
             else:
                 self.get_logger().warn(f'GNSS IMU FGO CSV not found, skipping: {gnss_imu_fgo_csv}')
 
         if not estimate_jobs or not reference_csv:
             self.get_logger().error(
-                'Please set estimate_csv and reference_csv, for example: '
+                'Please set estimate_csv or estimate_csvs and reference_csv, for example: '
                 'ros2 run analyse error_analysis --ros-args '
-                '-p estimate_csv:=/Data/fgo_state_optimized.csv '
+                '-p estimate_csvs:=/Data/fgo_state_optimized.csv,/Data/gnss_imu_fgo_output.csv '
                 '-p reference_csv:=/Data/reference.csv')
             return
 
@@ -661,6 +670,21 @@ def _take_initial_fraction(samples: Sequence[TrajectorySample], fraction: float)
         return list(samples)
     count = max(2, math.ceil(len(samples) * fraction))
     return list(samples[:count])
+
+
+def _split_list(value: str) -> List[str]:
+    if not value.strip():
+        return []
+    normalized = value.replace(';', ',')
+    return [item.strip() for item in normalized.split(',') if item.strip()]
+
+
+def _path_already_queued(path: Path, jobs: Sequence[Tuple[str, Path]]) -> bool:
+    normalized = path.expanduser()
+    for _, queued_path in jobs:
+        if queued_path.expanduser() == normalized:
+            return True
+    return False
 
 
 def _row_is_empty(row: Dict[str, str]) -> bool:

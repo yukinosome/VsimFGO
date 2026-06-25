@@ -43,6 +43,8 @@
         AutoDiffGPInterpolatedFactor: true
         AutoDiffGPMotionPriorFactor: false
         GPInterpolatedFactorCalcJacobian: true
+        useNNGPResidual: true
+        NNGPResidualModelPath: "/workspace/gp_residual_training/runs/fgo_gt_hermite/simple_mlp_v1.txt"
 
         StateMeasSyncUpperBound: 0.02
         StateMeasSyncLowerBound: -0.02

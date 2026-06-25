@@ -312,6 +312,7 @@ namespace fgo::integrator {
       RCLCPP_WARN(rosNodePtr_->get_logger(), "NO gpType chosen. Please choose.");
       return false;
     }
+    interpolatorI_ = maybeWrapNNGPResidualInterpolator(interpolatorI_, integratorName_);
 
     auto gnssIter = dataSensor.begin();
 

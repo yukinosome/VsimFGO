@@ -63,6 +63,8 @@ namespace fgo::graph {
     bool AutoDiffGPInterpolatedFactor = true;
     bool AutoDiffGPMotionPriorFactor = false;
     bool GPInterpolatedFactorCalcJacobian = true;
+    bool useNNGPResidual = false;
+    std::string NNGPResidualModelPath;
 
     bool addEstimatedVarianceAfterInit = false;
     bool addConstDriftFactor = false;

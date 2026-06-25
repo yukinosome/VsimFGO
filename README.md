@@ -20,11 +20,21 @@ This project is a learning-oriented extension of the gnssFGO algorithm. Building
 | [gnssFGO](https://github.com/hz658832/gnssFGO) | Original algorithm code for multi-constellation GNSS factor graph optimization |
 | **VsimFGO** | Derivative learning project extending visual factor support |
 
-## Current Status
+## How to start
 
-> Project is under active development and not yet complete
+```bash
+git clone https://github.com/yukinosome/VsimFGO.git
+cd gnssFGO/docker
+docker build -t haomingac/gnssfgo:latest
+docker compose up -d
+```
 
-- [√] Basic framework setup
-- [√] Image recognition factor implementation
-- [ ] Gaussian interpolation module
-- [ ] Complete testing and validation
+How to start the container:
+```bash
+docker start gnssfgo
+```
+
+You can access the container interactively:
+```bash
+docker exec -it gnssfgo bash
+```

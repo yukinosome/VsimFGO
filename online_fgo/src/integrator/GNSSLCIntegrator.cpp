@@ -305,6 +305,7 @@ namespace fgo::integrator {
     } else {
       RCLCPP_WARN_STREAM(rosNodePtr_->get_logger(), integratorName_ + ": NO gpType chosen. Please choose.");
     }
+    interpolator_ = maybeWrapNNGPResidualInterpolator(interpolator_, integratorName_);
 
     RCLCPP_INFO(rosNodePtr_->get_logger(), "--------------------- GNSSLCIntegrator initialized! ---------------------");
   }
