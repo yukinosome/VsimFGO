@@ -84,6 +84,13 @@ namespace fgo::graph {
     double VoteNearZeroVelocity = 0.1;
     int NoOptimizationAfterStates = 500;
 
+    bool addStartupStatePrior = false;
+    int startupStatePriorCount = 0;
+    gtsam::Vector6 startupPosePriorSigmas = (gtsam::Vector6() << 0.5, 0.5, 0.5, 5., 5., 5.).finished();
+    gtsam::Vector3 startupVelPriorSigmas = (gtsam::Vector3() << 2., 2., 2.).finished();
+    gtsam::Vector3 startupOmegaPriorSigmas = (gtsam::Vector3() << 0.2, 0.2, 0.2).finished();
+    gtsam::Vector6 startupBiasPriorSigmas = (gtsam::Vector6() << 0.2, 0.2, 0.2, 0.02, 0.02, 0.02).finished();
+
     GraphParamBase() = default;
 
     explicit GraphParamBase(const gnss_fgo::GNSSFGOParamsPtr &baseParamPtr) : gnss_fgo::GNSSFGOParams(*baseParamPtr) {};

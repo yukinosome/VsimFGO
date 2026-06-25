@@ -500,6 +500,40 @@ namespace fgo::integrator {
                   "---------------------  IntegratorBase initialized! --------------------- ");
     }
 
+    std::shared_ptr<fgo::models::GPInterpolator>
+    maybeWrapNNGPResidualInterpolator(const std::shared_ptr<fgo::models::GPInterpolator> &baseInterpolator,
+                                      const std::string &ownerName) const {
+      if (!baseInterpolator) {
+        return baseInterpolator;
+      }
+
+      if (!integratorBaseParamPtr_ || !integratorBaseParamPtr_->useNNGPResidual) {
+        return baseInterpolator;
+      }
+
+      if (integratorBaseParamPtr_->NNGPResidualModelPath.empty()) {
+        RCLCPP_WARN_STREAM(rosNodePtr_->get_logger(),
+                           ownerName << ": useNNGPResidual is true but NNGPResidualModelPath is empty. "
+                                     << "Using base GP interpolator.");
+        return baseInterpolator;
+      }
+
+      try {
+        auto wrapped = std::make_shared<fgo::models::GPResidualNNInterpolator>(
+          baseInterpolator, integratorBaseParamPtr_->NNGPResidualModelPath);
+        RCLCPP_INFO_STREAM(rosNodePtr_->get_logger(),
+                           ownerName << ": loaded GP residual NN interpolator from "
+                                     << integratorBaseParamPtr_->NNGPResidualModelPath);
+        return wrapped;
+      } catch (const std::exception &ex) {
+        RCLCPP_ERROR_STREAM(rosNodePtr_->get_logger(),
+                            ownerName << ": failed to load GP residual NN interpolator from "
+                                      << integratorBaseParamPtr_->NNGPResidualModelPath << ": "
+                                      << ex.what() << ". Using base GP interpolator.");
+        return baseInterpolator;
+      }
+    }
+
   public:
     typedef std::shared_ptr<IntegratorBase> Ptr;
     typedef std::map<std::string, Ptr> IntegratorMap;
