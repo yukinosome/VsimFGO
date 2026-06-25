@@ -153,7 +153,8 @@ namespace fgo::integrator {
       sumVelocity += pva.vel_n;
       //rclcpp::sleep_for(std::chrono::nanoseconds(1000000));  // 10000000
       auto pvtDelay = 0; //this->PVTDelayCalculator_->getDelay()  + paramPtr_->pvtMeasTimeOffset;
-      auto delayFromMsg = (thisPVATime - lastPVATime).seconds() - 0.1;
+      const auto expectedPVTPeriod = 1.0 / static_cast<double>(paramPtr_->GNSSMeasurementFrequency);
+      auto delayFromMsg = (thisPVATime - lastPVATime).seconds() - expectedPVTPeriod;
 
       if (first_measurement) {
         first_measurement = false;

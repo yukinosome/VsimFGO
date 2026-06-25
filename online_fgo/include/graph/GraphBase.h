@@ -39,6 +39,7 @@
 #include <gtsam/slam/BetweenFactor.h>
 #include <gtsam/inference/Symbol.h>
 #include <gtsam/nonlinear/ISAM2.h>
+#include <gtsam/slam/PriorFactor.h>
 //internal
 #include "graph/GraphUtils.h"
 #include "graph/param/GraphParams.h"

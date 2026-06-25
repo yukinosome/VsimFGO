@@ -35,6 +35,7 @@ namespace gnss_fgo {
     bool calcErrorOnOpt = false;
     bool delayFromPPS = false;
     double pvtMeasTimeOffset = 0.;
+    int pvtMeasurementFrequency = 10;
 
     bool imuMessageHasUncertainty = false;
     double accelerometerSigma = 0.0008;

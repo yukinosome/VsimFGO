@@ -76,6 +76,10 @@ namespace gnss_fgo {
     paramsPtr_->pvtMeasTimeOffset = pvtMeasTimeOffset.value();
     RCLCPP_WARN_STREAM(this->get_logger(), "pvtMeasTimeOffset: " << paramsPtr_->pvtMeasTimeOffset);
 
+    utils::RosParameter<int> pvtMeasurementFrequency("GNSSFGO.pvtMeasurementFrequency", 10, *this);
+    paramsPtr_->pvtMeasurementFrequency = pvtMeasurementFrequency.value();
+    RCLCPP_WARN_STREAM(this->get_logger(), "pvtMeasurementFrequency: " << paramsPtr_->pvtMeasurementFrequency);
+
     // PARAM: initialization
     utils::RosParameter<std::vector<double>> initSigmaX("GNSSFGO.Initialization.initSigmaX", *this);
     lastOptimizedState_.poseVar = gtsam::Vector6(initSigmaX.value().data()).asDiagonal();
